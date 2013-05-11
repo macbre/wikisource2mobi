@@ -2,13 +2,14 @@
 use common::sense;
 use LWP::UserAgent;
 use URI::Escape;
+use HTML::TreeBuilder::XPath;
 use YAML::Tiny;
 use Data::Dumper;
 use Cwd 'realpath';
 use File::Basename 'dirname';
 
-# pretend we're a fancy browser
-use constant USER_AGENT => "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.31 (KHTML, like Gecko) Chrome/26.0.1410.63 Safari/537.31";
+# HTTP utils
+use constant USER_AGENT => "Mozilla/5.0 (wikisource2mobi)";
 
 sub getUrl($) {
 	(my $url) = @_;
@@ -67,12 +68,23 @@ say "\nFound " . scalar(@chapters) . " chapters";
 
 # fetch chapters
 foreach my $chapter (@chapters) {
-	my $url = "http://pl.wikisource.org/w/index.php?title=" . uri_escape_utf8($chapter) . "&action=render";
+	my $url = "http://pl.wikisource.org/w/index.php?title=" . $chapter . "&action=render";
 	say "Fetching <$url>...";
 
-	my $content = getUrl($url); # or die "Cannot fetch the chapter";
+	my $html = getUrl($url) or die "Cannot fetch the chapter";
+	$html =~ s/<br \/>|&#160;/<\/p><p>/g;
 
-	#say Dumper($content);
+	my $tree= HTML::TreeBuilder::XPath->new;
+	$tree->parse($html) or die "Cannot parse chapter's HTML";
+
+	my @nodes = $tree->findnodes_as_strings(q{//body/table//p});
+
+	foreach(@nodes) {
+		next if /^\s?$/; # skip empty lines
+		s/\[\d+\]//g; # remove references
+
+		say;
+	}
 }
 
 say "\nDone!";
