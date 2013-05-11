@@ -7,6 +7,7 @@ use YAML::Tiny;
 use Data::Dumper;
 use Cwd 'realpath';
 use File::Basename 'dirname';
+use EBook::MOBI;
 
 # HTTP utils
 use constant USER_AGENT => "Mozilla/5.0 (wikisource2mobi)";
@@ -37,6 +38,22 @@ my $yaml = YAML::Tiny->read($bookInfoFile) or die "Cannot open YAML file";
 $yaml = $yaml->[0];
 
 #say Dumper($yaml);
+
+# prepare the book
+my $book = EBook::MOBI->new();
+my $converter = EBook::MOBI::Converter->new();
+
+$book->set_filename("$workDir/book.mobi");
+$book->set_title   ($yaml->{title});
+$book->set_author  ($yaml->{author});
+
+# generate cover
+$book->add_mhtml_content("<center><h1>$yaml->{title}</h1><h2>$yaml->{author}</h2></center>");
+$book->add_pagebreak();
+
+# TOC
+$book->add_toc_once("Spis treści");
+$book->add_pagebreak();
 
 # fetch the index file
 my $source = $yaml->{source} . "?action=raw";
@@ -78,13 +95,39 @@ foreach my $chapter (@chapters) {
 	$tree->parse($html) or die "Cannot parse chapter's HTML";
 
 	my @nodes = $tree->findnodes_as_strings(q{//body/table//p});
+	my $line;
 
 	foreach(@nodes) {
-		next if /^\s?$/; # skip empty lines
 		s/\[\d+\]//g; # remove references
+		next if /^\s?$/; # skip empty lines
 
-		say;
+		$line++;
+
+		if ($line eq 1) {
+			$book->add_mhtml_content( $converter->title($_) . "<br><br>" ); # add a chapter name
+		}
+		else {
+			$book->add_mhtml_content( $converter->paragraph($_) ); # add a paragraph
+		}
+
+		#say;
 	}
+
+	$book->add_pagebreak();
 }
+
+say "Writing MOBI file...";
+
+# now generate an ebook
+$book->make();
+
+# generate HTML file with the content
+open my $html, '>:utf8', "$workDir/content.html" or die "Cannot create HTML file";
+
+print $html $book->print_mhtml(1);
+close $html;
+
+# save the file
+$book->save() or die "save() failed";
 
 say "\nDone!";
