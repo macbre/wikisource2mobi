@@ -9,6 +9,8 @@ use Cwd 'realpath';
 use File::Basename 'dirname';
 use EBook::MOBI;
 
+use Encode qw(decode);
+
 # HTTP utils
 use constant USER_AGENT => "Mozilla/5.0 (wikisource2mobi)";
 
@@ -19,9 +21,11 @@ sub getUrl($) {
 	$ua->agent(USER_AGENT);
 
 	my $req = new HTTP::Request 'GET' => $url;
-	my $res = $ua->request($req);
+	my $res = $ua->request($req) or die "HTTP request failed!";
+	my $html = $res->{_content};
 
-	return $res->{_content} or die "Request failed";
+	# @see http://stackoverflow.com/questions/4572007/perl-lwpuseragent-mishandling-utf-8-response
+	return Encode::decode("utf8", $html);
 }
 
 # validate CLI arguments
@@ -109,16 +113,13 @@ foreach my $chapter (@chapters) {
 		else {
 			$book->add_mhtml_content( $converter->paragraph($_) ); # add a paragraph
 		}
-
-		#say;
 	}
 
 	$book->add_pagebreak();
 }
 
-say "Writing MOBI file...";
-
 # now generate an ebook
+say "Writing MOBI file...";
 $book->make();
 
 # generate HTML file with the content
