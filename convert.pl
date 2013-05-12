@@ -67,17 +67,17 @@ say "\nFetching $source...";
 
 my $index = getUrl($source) or die "Cannot fetch the index";
 
-#say Dumper($index);
-
 # parse the index to get chapters
 my @lines = split(/\n/, $index);
 my @chapters;
 
 foreach (@lines) {
-	next unless /^\*\s?\[\[/;
+	# * [[Cień (Grabiński)|Cień]]
+	# [[Biały Wyrak]]<br>
+	next unless /^\*\s?\[\[|\[\[[^\:]+\]\]<br>/;
 	chomp;
 
-	s/^\*\s?|\[\[|\]\]//g; # clean wikitext - remove brackets and bullet points
+	s/^\*\s?|\[\[|\]\]|<br>//g; # clean wikitext - remove brackets and bullet points
 	s/\|(.*)$//; # [[Cień (Grabiński)|Cień]] -> Cień (Grabiński)
 
 	s/ /\_/g; # wiki-encode spaces
@@ -87,12 +87,12 @@ foreach (@lines) {
 
 say "\nFound " . scalar(@chapters) . " chapters:";
 
-#say Dumper(@chapters);
+#say Dumper($index); say Dumper(@chapters); exit;
 
 # fetch chapters
 foreach my $chapter (@chapters) {
 	my $url = "http://pl.wikisource.org/w/index.php?title=" . $chapter . "&action=render";
-	say "* fetching <$url>...";
+	say "* fetching and parsing <$url>...";
 
 	my $html = getUrl($url) or die "Cannot fetch the chapter";
 	$html =~ s/<br \/>|&#160;/<\/p><p>/g;
@@ -100,22 +100,19 @@ foreach my $chapter (@chapters) {
 	my $tree= HTML::TreeBuilder::XPath->new;
 	$tree->parse($html) or die "Cannot parse chapter's HTML";
 
-	my @nodes = $tree->findnodes_as_strings(q{//body/table//p});
-	my $line;
+	my @nodes = $tree->findnodes_as_strings(q{//body/*[not(@id="mojNaglowek") and not(@id="Template_law")]//p[not(big)]}) or die("No nodes found");
+
+	# add chapter data
+	$chapter =~ tr/\_/ /;
+	$chapter =~ s/\s?\((.*)$//;
+	$book->add_mhtml_content( $converter->title($chapter) ); # add a chapter name
+	$book->add_mhtml_content( $converter->paragraph("<br /><br />") );
 
 	foreach(@nodes) {
 		s/\[\d+\]//g; # remove references
 		next if /^\s?$/; # skip empty lines
 
-		$line++;
-
-		if ($line eq 1) {
-			$book->add_mhtml_content( $converter->title($_) ); # add a chapter name
-			$book->add_mhtml_content( $converter->paragraph("<br /><br />") );
-		}
-		else {
-			$book->add_mhtml_content( $converter->paragraph($_) ); # add a paragraph
-		}
+		$book->add_mhtml_content( $converter->paragraph($_) ); # add a paragraph
 	}
 
 	$book->add_pagebreak();
@@ -130,7 +127,7 @@ $book->add_mhtml_content(Encode::encode('utf8', <<COPYRIGHT
 	<br /><br />
 	Przygotowanie oraz konwersja do formatu MOBI:
 	<br />
-	Maciej Brencz <maciej.brencz\@gmail.com>
+	Maciej Brencz &lt;maciej.brencz\@gmail.com&gt;
 	<br /><br />
 	Źródło:
 	<br />
@@ -138,9 +135,13 @@ $book->add_mhtml_content(Encode::encode('utf8', <<COPYRIGHT
 	<br>
 	<a href="$yaml->{source}">$yaml->{source}</a>
 	<br /><br />
+	Data wydania oryginału:
+	<br>
+	$yaml->{pubdate} r.
+	<br /><br />
 	Data wygenerowania pliku:
 	<br>
-	$date
+	$date r.
 	<br /><br />
 	Generowanie plików MOBI napędza <a href="https://github.com/macbre/wikisource2mobi">wikisource2mobi</a>
 	<br /><br />
