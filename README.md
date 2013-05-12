@@ -12,6 +12,6 @@ The following PERL modules are required:
 
 ### Readers
 
-* (fbreader)[http://fbreader.org/]
-* (EBook viewer from Calibre)[http://calibre-ebook.com/]
-* (GutenPy)[http://gutenpy.sourceforge.net/]
+* [fbreader](http://fbreader.org/)
+* [EBook viewer from Calibre](http://calibre-ebook.com/)
+* [GutenPy](http://gutenpy.sourceforge.net/)
