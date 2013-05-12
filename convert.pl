@@ -161,8 +161,7 @@ say "\nWriting MOBI file...";
 $book->make();
 
 # generate HTML file with the content
-open my $html, '>:utf8', "$workDir/content.html" or die "Cannot create HTML file";
-
+open my $html, '>', "$workDir/content.html" or die "Cannot create HTML file";
 print $html $book->print_mhtml(1);
 close $html;
 
