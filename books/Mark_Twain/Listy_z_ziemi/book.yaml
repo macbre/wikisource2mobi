@@ -1,0 +1,23 @@
+title: "Listy z Ziemi"
+author: "Mark Twain"
+pubdate: 1966
+cover: "http://macfaq.koolhost.com/Cover.jpg"
+source: "http://macfaq.koolhost.com/index1.html"
+chapters:
+	- http://macfaq.koolhost.com/02.htm
+	- http://macfaq.koolhost.com/03.htm
+	- http://macfaq.koolhost.com/04.htm
+	- http://macfaq.koolhost.com/05.htm
+	- http://macfaq.koolhost.com/06.htm
+	- http://macfaq.koolhost.com/07.htm
+	- http://macfaq.koolhost.com/08.htm
+	- http://macfaq.koolhost.com/09.htm
+	- http://macfaq.koolhost.com/10.htm
+	- http://macfaq.koolhost.com/11.htm
+	- http://macfaq.koolhost.com/12.htm
+	- http://macfaq.koolhost.com/13.htm
+	- http://macfaq.koolhost.com/14.htm
+	- http://macfaq.koolhost.com/15.htm
+xpath:
+	header: "//body//h2"
+	content: "//body//p//text()"
