@@ -56,8 +56,9 @@ $book->set_title   (Encode::encode('utf8', $yaml->{title}));
 $book->set_author  (Encode::encode('utf8', $yaml->{author}));
 
 # generate cover
-$book->add_mhtml_content("<h1>" . Encode::encode('utf8', $yaml->{title}) . "</h1>");
-$book->add_mhtml_content("<h2>" . Encode::encode('utf8', $yaml->{author}) . "</h2>");
+$book->add_mhtml_content( $converter->paragraph("<br /><br />") );
+$book->add_mhtml_content("<h1><center>" . Encode::encode('utf8', $yaml->{title}) . "</center></h1>");
+$book->add_mhtml_content("<h2><center>" . Encode::encode('utf8', $yaml->{author}) . "</center></h2>");
 $book->add_pagebreak();
 
 # TOC
@@ -77,9 +78,11 @@ my @chapters;
 foreach (@lines) {
 	# * [[Cień (Grabiński)|Cień]]
 	# [[Biały Wyrak]]<br>
-	next unless /^\*\s?\[\[|\[\[[^\:]+\]\]<br>/;
+	# [[Przed drogą daleką]] (Urywki z pamiętnika W. Lasoty)<br>
+	next unless /^\*\s?\[\[|\[\[[^\:]+\]\](.*)?<br>/;
 	chomp;
 
+	s/\]\](.*)$//; # [[Przed drogą daleką]] (Urywki z pamiętnika W. Lasoty)<br> -> [[Przed drogą daleką]]
 	s/^\*\s?|\[\[|\]\]|<br>//g; # clean wikitext - remove brackets and bullet points
 	s/\|(.*)$//; # [[Cień (Grabiński)|Cień]] -> Cień (Grabiński)
 
