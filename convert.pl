@@ -8,8 +8,7 @@ use Data::Dumper;
 use Cwd 'realpath';
 use File::Basename 'dirname';
 use EBook::MOBI;
-
-use Encode qw(decode);
+use Encode;
 
 # HTTP utils
 use constant USER_AGENT => "Mozilla/5.0 (wikisource2mobi)";
@@ -24,8 +23,7 @@ sub getUrl($) {
 	my $res = $ua->request($req) or die "HTTP request failed!";
 	my $html = $res->{_content};
 
-	# @see http://stackoverflow.com/questions/4572007/perl-lwpuseragent-mishandling-utf-8-response
-	return Encode::decode("utf8", $html);
+	return $html;
 }
 
 # validate CLI arguments
@@ -35,7 +33,7 @@ die "YAML file doesn't exist" unless -e $ARGV[0];
 my $bookInfoFile = $ARGV[0];
 my $workDir = dirname(realpath($bookInfoFile));
 
-say "Using $bookInfoFile (working in $workDir directory)...";
+say "Loading $bookInfoFile info file...";
 
 # parse desc file
 my $yaml = YAML::Tiny->read($bookInfoFile) or die "Cannot open YAML file";
@@ -43,20 +41,23 @@ $yaml = $yaml->[0];
 
 #say Dumper($yaml);
 
+say "My workplace will be in $workDir...";
+
 # prepare the book
 my $book = EBook::MOBI->new();
 my $converter = EBook::MOBI::Converter->new();
 
 $book->set_filename("$workDir/book.mobi");
-$book->set_title   ($yaml->{title});
-$book->set_author  ($yaml->{author});
+$book->set_title   (Encode::encode('utf8', $yaml->{title}));
+$book->set_author  (Encode::encode('utf8', $yaml->{author}));
 
 # generate cover
-$book->add_mhtml_content("<center><h1>$yaml->{title}</h1><h2>$yaml->{author}</h2></center>");
+$book->add_mhtml_content("<h1>" . Encode::encode('utf8', $yaml->{title}) . "</h1>");
+$book->add_mhtml_content("<h2>" . Encode::encode('utf8', $yaml->{author}) . "</h2>");
 $book->add_pagebreak();
 
 # TOC
-$book->add_toc_once("Spis treści");
+$book->add_toc_once(Encode::encode('utf8', "Spis treści"));
 $book->add_pagebreak();
 
 # fetch the index file
@@ -83,14 +84,14 @@ foreach (@lines) {
 	push @chapters, $_;
 }
 
-say "\nFound " . scalar(@chapters) . " chapters";
+say "\nFound " . scalar(@chapters) . " chapters:";
 
 #say Dumper(@chapters);
 
 # fetch chapters
 foreach my $chapter (@chapters) {
 	my $url = "http://pl.wikisource.org/w/index.php?title=" . $chapter . "&action=render";
-	say "Fetching <$url>...";
+	say "* fetching <$url>...";
 
 	my $html = getUrl($url) or die "Cannot fetch the chapter";
 	$html =~ s/<br \/>|&#160;/<\/p><p>/g;
@@ -108,7 +109,8 @@ foreach my $chapter (@chapters) {
 		$line++;
 
 		if ($line eq 1) {
-			$book->add_mhtml_content( $converter->title($_) . "<br><br>" ); # add a chapter name
+			$book->add_mhtml_content( $converter->title($_) ); # add a chapter name
+			$book->add_mhtml_content( $converter->paragraph("<br /><br />") );
 		}
 		else {
 			$book->add_mhtml_content( $converter->paragraph($_) ); # add a paragraph
@@ -118,8 +120,36 @@ foreach my $chapter (@chapters) {
 	$book->add_pagebreak();
 }
 
+# copyright stuff
+my $date = `date +%d\\ %B\\ %Y`;
+$book->add_mhtml_content(Encode::encode('utf8', <<COPYRIGHT
+<p><center><small>
+	<br /><br />
+	<br /><br />
+	<br /><br />
+	Przygotowanie oraz konwersja do formatu MOBI:
+	<br />
+	Maciej Brencz <maciej.brencz\@gmail.com>
+	<br /><br />
+	Źródło:
+	<br />
+	WikiŹródła, zasób udostępniony na zasadach Domeny Publicznej
+	<br>
+	<a href="$yaml->{source}">$yaml->{source}</a>
+	<br /><br />
+	Data wygenerowania pliku:
+	<br>
+	$date
+	<br /><br />
+	Generowanie plików MOBI napędza <a href="https://github.com/macbre/wikisource2mobi">wikisource2mobi</a>
+	<br /><br />
+	<strong>Miłej lektury!</strong>
+</small></center></p>
+COPYRIGHT
+));
+
 # now generate an ebook
-say "Writing MOBI file...";
+say "\nWriting MOBI file...";
 $book->make();
 
 # generate HTML file with the content
@@ -131,4 +161,4 @@ close $html;
 # save the file
 $book->save() or die "save() failed";
 
-say "\nDone!";
+say "Done!";
