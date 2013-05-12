@@ -23,7 +23,8 @@ sub getUrl($) {
 	my $res = $ua->request($req) or die "HTTP request failed!";
 	my $html = $res->{_content};
 
-	return $html;
+	# return properly formatted utf8
+	return Encode::decode('utf8', $html);
 }
 
 # check dependencies
@@ -57,12 +58,12 @@ $book->set_author  (Encode::encode('utf8', $yaml->{author}));
 
 # generate cover
 $book->add_mhtml_content( $converter->paragraph("<br /><br />") );
-$book->add_mhtml_content("<h1><center>" . Encode::encode('utf8', $yaml->{title}) . "</center></h1>");
-$book->add_mhtml_content("<h2><center>" . Encode::encode('utf8', $yaml->{author}) . "</center></h2>");
+$book->add_mhtml_content("<h1><center>$yaml->{title}</center></h1>");
+$book->add_mhtml_content("<h2><center>$yaml->{author}</center></h2>");
 $book->add_pagebreak();
 
 # TOC
-$book->add_toc_once(Encode::encode('utf8', "Spis treści"));
+$book->add_toc_once("Spis treści");
 $book->add_pagebreak();
 
 # fetch the index file
@@ -126,7 +127,7 @@ foreach my $chapter (@chapters) {
 
 # copyright stuff
 my $date = `date +%d\\ %B\\ %Y`;
-$book->add_mhtml_content(Encode::encode('utf8', <<COPYRIGHT
+$book->add_mhtml_content(<<COPYRIGHT
 <p><center><small>
 	<br /><br />
 	<br /><br />
@@ -154,14 +155,14 @@ $book->add_mhtml_content(Encode::encode('utf8', <<COPYRIGHT
 	<strong>Miłej lektury!</strong>
 </small></center></p>
 COPYRIGHT
-));
+);
 
 # now generate an ebook
 say "\nWriting MOBI file...";
 $book->make();
 
 # generate HTML file with the content
-open my $html, '>', "$workDir/content.html" or die "Cannot create HTML file";
+open my $html, '>:encoding(UTF-8)', "$workDir/content.html" or die "Cannot create HTML file";
 print $html $book->print_mhtml(1);
 close $html;
 
