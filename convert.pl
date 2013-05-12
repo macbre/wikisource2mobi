@@ -48,6 +48,7 @@ my $book = EBook::MOBI->new();
 my $converter = EBook::MOBI::Converter->new();
 
 $book->set_filename("$workDir/book.mobi");
+$book->set_encoding(':encoding(UTF-8)');
 $book->set_title   (Encode::encode('utf8', $yaml->{title}));
 $book->set_author  (Encode::encode('utf8', $yaml->{author}));
 
