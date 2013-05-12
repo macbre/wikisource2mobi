@@ -7,8 +7,10 @@ Converts books from WikiSource to mobi.
 
 The following PERL modules are required:
 
-* EBook::MOBI
+* EBook::EPUB
 * HTML::TreeBuilder::XPath
+
+and ``ebook-convert`` binary from Calibre (to generate MOBI from EPUB book).
 
 ### Readers
 
