@@ -26,6 +26,9 @@ sub getUrl($) {
 	return $html;
 }
 
+# check dependencies
+die "Please install ebook-meta" unless system("which ebook-meta > /dev/null") == 0;
+
 # validate CLI arguments
 die "Please pass book YAML file" unless defined $ARGV[0];
 die "YAML file doesn't exist" unless -e $ARGV[0];
@@ -162,5 +165,9 @@ close $html;
 
 # save the file
 $book->save() or die "save() failed";
+
+# set meta data
+say "\nWriting meta data....";
+system("/usr/bin/env ebook-meta --language pl --book-producer wikisource2mobi $workDir/book.mobi > /dev/null") == 0 or die ("Cannot modify ebook's meta data");
 
 say "Done!";
