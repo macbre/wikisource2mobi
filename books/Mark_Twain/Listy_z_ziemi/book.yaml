@@ -1,8 +1,9 @@
 title: "Listy z Ziemi"
 author: "Mark Twain"
-pubdate: 1966
+pubdate: 1946
 cover: "http://macfaq.koolhost.com/Cover.jpg"
 source: "http://macfaq.koolhost.com/index1.html"
+encoding: "windows-1250"
 chapters:
 	- http://macfaq.koolhost.com/02.htm
 	- http://macfaq.koolhost.com/03.htm
