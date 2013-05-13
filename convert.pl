@@ -3,6 +3,7 @@ use common::sense;
 use LWP::UserAgent;
 use HTML::TreeBuilder::XPath;
 use YAML::Tiny;
+use Text::Iconv;
 use Data::Dumper;
 use Cwd 'realpath';
 use File::Basename 'dirname';
@@ -17,8 +18,8 @@ use constant {
 
 say "wikisource2mobi v" . VERSION;
 
-sub getUrl($) {
-	(my $url) = @_;
+sub getUrl($$) {
+	my ($url, $encoding) = @_;
 
 	my $ua = new LWP::UserAgent;
 	$ua->agent(USER_AGENT);
@@ -27,8 +28,13 @@ sub getUrl($) {
 	my $res = $ua->request($req) or die "HTTP request failed!";
 	my $html = $res->{_content};
 
-	# return properly formatted utf8
-	return Encode::decode('utf8', $html);
+	# convert encodings
+	if (defined $encoding) {
+		my $converter = Text::Iconv->new($encoding, 'utf8');
+		$html = $converter->convert($html);
+	}
+
+	return $html;
 }
 
 # chapters generation
@@ -36,6 +42,8 @@ my $chaptersCnt;
 sub addChapter($$$) {
 	use File::Temp qw/ :POSIX /;
 	my ($epub, $title, $html) = @_;
+
+	say "Adding a chapter \"" . Encode::encode('utf8', $title) . "\"...";
 
 	# generate temporary XHTML file
 	my $file = tmpnam();
@@ -71,9 +79,9 @@ say "Loading $bookInfoFile info file...";
 my $yaml = YAML::Tiny->read($bookInfoFile) or die "Cannot open YAML file";
 $yaml = $yaml->[0];
 
-#say Dumper($yaml);
+#say Dumper($yaml); exit;
 
-say "My workplace will be in $workDir...";
+say "My workplace will be in <$workDir>\n";
 
 # prepare the book
 my $epub = EBook::EPUB->new;
@@ -84,35 +92,44 @@ $epub->add_language('pl');
 $epub->add_publisher('wikisource2mobi');
 $epub->add_source($yaml->{source});
 
-# fetch the index file
-my $source = $yaml->{source} . "?action=raw";
-say "\nFetching $source...";
-
-my $index = getUrl($source) or die "Cannot fetch the index";
-
-# parse the index to get chapters
-my @lines = split(/\n/, $index);
 my @chapters;
 
-foreach (@lines) {
-	# * [[Cień (Grabiński)|Cień]]
-	# [[Biały Wyrak]]<br>
-	# [[Przed drogą daleką]] (Urywki z pamiętnika W. Lasoty)<br>
-	next unless /^\*\s?\[\[|\[\[[^\:]+\]\](.*)?<br>/;
-	chomp;
+if (defined($yaml->{chapters})) {
+	@chapters = @{$yaml->{chapters}};
+}
+# fetch the index file (if chapters not provided)
+elsif (defined($yaml->{source})) {
+	my $source = $yaml->{source} . "?action=raw";
+	say "Fetching and parsing <$source>...";
 
-	s/\]\](.*)$//; # [[Przed drogą daleką]] (Urywki z pamiętnika W. Lasoty)<br> -> [[Przed drogą daleką]]
-	s/^\*\s?|\[\[|\]\]|<br>//g; # clean wikitext - remove brackets and bullet points
-	s/\|(.*)$//; # [[Cień (Grabiński)|Cień]] -> Cień (Grabiński)
+	my $index = getUrl($source, $yaml->{encoding}) or die "Cannot fetch the index";
 
-	s/ /\_/g; # wiki-encode spaces
+	# parse the index to get chapters
+	my @lines = split(/\n/, $index);
 
-	push @chapters, $_;
+	foreach (@lines) {
+		# * [[Cień (Grabiński)|Cień]]
+		# [[Biały Wyrak]]<br>
+		# [[Przed drogą daleką]] (Urywki z pamiętnika W. Lasoty)<br>
+		next unless /^\*\s?\[\[|\[\[[^\:]+\]\](.*)?<br>/;
+		chomp;
+
+		s/\]\](.*)$//; # [[Przed drogą daleką]] (Urywki z pamiętnika W. Lasoty)<br> -> [[Przed drogą daleką]]
+		s/^\*\s?|\[\[|\]\]|<br>//g; # clean wikitext - remove brackets and bullet points
+		s/\|(.*)$//; # [[Cień (Grabiński)|Cień]] -> Cień (Grabiński)
+
+		s/ /\_/g; # wiki-encode spaces
+
+		push @chapters, "http://pl.wikisource.org/w/index.php?title=$_&action=render";
+	}
+
+	say "\nFound " . scalar(@chapters) . " chapters:";
+}
+else {
+	die "Nor index nor source defined in YAML";
 }
 
-say "\nFound " . scalar(@chapters) . " chapters:";
-
-#say Dumper($index); say Dumper(@chapters); exit;
+#say Dumper(@chapters); exit;
 
 # cover
 addChapter($epub, "Okładka", <<COVER
@@ -123,29 +140,37 @@ COVER
 );
 
 # fetch chapters
-foreach my $chapter (@chapters) {
-	my $url = "http://pl.wikisource.org/w/index.php?title=" . $chapter . "&action=render";
+foreach my $url (@chapters) {
 	say "* fetching and parsing <$url>...";
 
-	my $html = getUrl($url) or die "Cannot fetch the chapter";
+	my $html = getUrl($url, $yaml->{encoding}) or die "Cannot fetch the chapter";
+
+	# proper UTF handling
+	$html = Encode::decode('utf8', $html);
+
+	# clean HTML
 	$html =~ s/<br \/>|&#160;/<\/p><p>/g;
+	$html =~ s/&nbsp;/ /g;
 
 	my $tree= HTML::TreeBuilder::XPath->new;
 	$tree->parse($html) or die "Cannot parse chapter's HTML";
 
-	my @nodes = $tree->findnodes_as_strings(q{//body/*[not(@id="mojNaglowek") and not(@id="Template_law")]//p[not(big)]}) or die("No nodes found");
-
-	# add chapter data
-	$chapter =~ tr/\_/ /;
-	$chapter =~ s/\s?\((.*)$//;
+	# xpath magic
+	my $contentXPath = $yaml->{xpath}->{content} // q{//body/*[not(@id="mojNaglowek") and not(@id="Template_law")]//p[not(big)]};
+	my $headerXPath = $yaml->{xpath}->{header} // q{//body//div[@id="mojNaglowek"]//td/b};
 
 	# chapter title
+	my @nodes = $tree->findnodes_as_strings($headerXPath) or die("No header nodes found");
+	my $chapterTitle = pop @nodes;
+
 	my $content;
 	$content .= "<p><br /><br /></p>\n";
-	$content .=  "<h1>$chapter</h1>\n";
+	$content .= "<h1>$chapterTitle</h1>\n";
 	$content .= "<p><br /><br /></p>\n";
 
 	# content
+	my @nodes = $tree->findnodes_as_strings($contentXPath) or die("No content nodes found");
+
 	foreach (@nodes) {
 		s/\[\d+\]//g; # remove references
 		next if /^\s?$/; # skip empty lines
@@ -153,7 +178,7 @@ foreach my $chapter (@chapters) {
 		$content .= "<p>$_</p>\n";
 	}
 
-	addChapter($epub, $chapter, $content);
+	addChapter($epub, $chapterTitle, $content);
 }
 
 # copyright stuff
@@ -169,7 +194,7 @@ addChapter($epub, "Nota redakcyjna", <<COPYRIGHT
 	<br /><br />
 	Źródło:
 	<br />
-	WikiŹródła, zasób udostępniony na zasadach Domeny Publicznej
+	Zasób udostępniony na zasadach Domeny Publicznej
 	<br>
 	<a href="$yaml->{source}">$yaml->{source}</a>
 	<br /><br />
