@@ -40,13 +40,13 @@ sub getUrl($;$) {
 # chapters generation
 my $chaptersCnt;
 sub addChapter($$$) {
-	use File::Temp qw/ :POSIX /;
+	use File::Temp 'tempfile';
 	my ($epub, $title, $html) = @_;
 
 	say "Adding a chapter \"" . Encode::encode('utf8', $title) . "\"...";
 
-	# generate temporary XHTML file
-	my $file = tmpnam();
+	# create temporary XHTML file
+	my ($fp, $file) = tempfile('wiki2source_XXXX', TMPDIR => 1) or die "Cannot create temporary file";
 
 	# wrap HTML into xHTML document
 	$html = <<HTML
@@ -63,8 +63,8 @@ $html
 HTML
 ;
 
-	# create temporary file
-	open my $fp, '>:utf8', $file or die "Cannot create temporary file";
+	# write to a temporary file
+	binmode $fp, ':utf8';
 	print $fp $html;
 	close $fp;
 
@@ -212,6 +212,8 @@ foreach my $url (@chapters) {
 	foreach (@nodes) {
 		s/\[\d+\]//g; # remove references
 		next if /^\s?$/; # skip empty lines
+
+		s/^\s+|\s+$//g; # remove whitespaces
 
 		$content .= "<p>$_</p>\n";
 	}
