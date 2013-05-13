@@ -12,13 +12,13 @@ use Encode;
 
 # HTTP utils
 use constant {
-	VERSION    => "0.0.1",
+	VERSION    => "0.0.2",
 	USER_AGENT => "Mozilla/5.0 (wikisource2mobi)"
 };
 
 say "wikisource2mobi v" . VERSION;
 
-sub getUrl($$) {
+sub getUrl($;$) {
 	my ($url, $encoding) = @_;
 
 	my $ua = new LWP::UserAgent;
@@ -131,13 +131,31 @@ else {
 
 #say Dumper(@chapters); exit;
 
-# cover
+# cover (text version)
 addChapter($epub, "Okładka", <<COVER
 	<p><br /><br /></p>
 	<h1><center>$yaml->{title}</center></h1>
 	<h2><center>$yaml->{author}</center></h2>
 COVER
 );
+
+# cover (an image)
+# Add cover image
+# Not actual epub standart but does the trick for iBooks
+if (defined $yaml->{cover}) {
+	use File::Temp qw/ :POSIX /;
+	say "Fetching a cover from <$yaml->{cover}>...\n";
+
+	my $cover = getUrl($yaml->{cover}) or die "Cannot fetch a cover";
+	my $file = tmpnam();
+
+	open my $fp, '>', $file or die "Cannot create temporary file for a cover";
+	print $fp $cover;
+	close $fp;
+
+	my $cover_id = $epub->copy_image($file, 'cover.jpg');
+	$epub->add_meta_item('cover', $cover_id);
+}
 
 # fetch chapters
 foreach my $url (@chapters) {
