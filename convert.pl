@@ -92,13 +92,18 @@ $epub->add_language('pl');
 $epub->add_publisher('wikisource2mobi');
 $epub->add_source($yaml->{source});
 
+$epub->add_identifier($yaml->{isbn}, 'ISBN') if exists $yaml->{isbn};
+
+# add CSS
+$epub->copy_stylesheet(realpath('./css/base.css'), 'style.css');
+
 my @chapters;
 
-if (defined($yaml->{chapters})) {
+if (exists $yaml->{chapters}) {
 	@chapters = @{$yaml->{chapters}};
 }
 # fetch the index file (if chapters not provided)
-elsif (defined($yaml->{source})) {
+elsif (exists $yaml->{source}) {
 	my $source = $yaml->{source} . "?action=raw";
 	say "Fetching and parsing <$source>...";
 
@@ -142,7 +147,7 @@ COVER
 # cover (an image)
 # Add cover image
 # Not actual epub standart but does the trick for iBooks
-if (defined $yaml->{cover}) {
+if (exists $yaml->{cover}) {
 	use File::Temp qw/ :POSIX /;
 	say "Fetching a cover from <$yaml->{cover}>...\n";
 
