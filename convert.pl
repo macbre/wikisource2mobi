@@ -48,6 +48,21 @@ sub addChapter($$$) {
 	# generate temporary XHTML file
 	my $file = tmpnam();
 
+	# wrap HTML into xHTML document
+	$html = <<HTML
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+	<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+	<title>$title</title>
+</head>
+<body>
+$html
+</body>
+</html>
+HTML
+;
+
 	# create temporary file
 	open my $fp, '>:utf8', $file or die "Cannot create temporary file";
 	print $fp $html;
@@ -218,15 +233,15 @@ addChapter($epub, "Nota redakcyjna", <<COPYRIGHT
 	Źródło:
 	<br />
 	Zasób udostępniony na zasadach Domeny Publicznej
-	<br>
+	<br />
 	<a href="$yaml->{source}">$yaml->{source}</a>
 	<br /><br />
 	Data wydania oryginału:
-	<br>
+	<br />
 	$yaml->{pubdate} r.
 	<br /><br />
 	Data wygenerowania pliku:
-	<br>
+	<br />
 	$date r.
 	<br /><br />
 	Generowanie plików EPUB oraz MOBI napędza <a href="https://github.com/macbre/wikisource2mobi">wikisource2mobi</a> v@{[VERSION]}
