@@ -46,7 +46,7 @@ sub addChapter($$$) {
 	say "Adding a chapter \"" . Encode::encode('utf8', $title) . "\"...";
 
 	# create temporary XHTML file
-	my ($fp, $file) = tempfile('wiki2source_XXXX', TMPDIR => 1) or die "Cannot create temporary file";
+	my ($fp, $file) = tempfile('epub_XXXX', TMPDIR => 1) or die "Cannot create temporary file";
 
 	# wrap HTML into xHTML document
 	$html = <<HTML
