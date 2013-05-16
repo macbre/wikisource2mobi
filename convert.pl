@@ -9,6 +9,7 @@ use Cwd 'realpath';
 use File::Basename 'dirname';
 use EBook::EPUB;
 use Encode;
+use File::Temp 'tempfile';
 
 # HTTP utils
 use constant {
@@ -37,16 +38,23 @@ sub getUrl($;$) {
 	return $html;
 }
 
+sub storeInTemp($;$) {
+	my ($content, $binmode) = @_;
+	my ($fp, $file) = tempfile('epub_XXXX', TMPDIR => 1) or die "Cannot create temporary file";
+
+	binmode $fp, $binmode if defined $binmode;
+	print $fp $content;
+	close $fp;
+
+	return $file;
+}
+
 # chapters generation
 my $chaptersCnt;
 sub addChapter($$$) {
-	use File::Temp 'tempfile';
 	my ($epub, $title, $html) = @_;
 
 	say "Adding a chapter \"" . Encode::encode('utf8', $title) . "\"...";
-
-	# create temporary XHTML file
-	my ($fp, $file) = tempfile('epub_XXXX', TMPDIR => 1) or die "Cannot create temporary file";
 
 	# wrap HTML into xHTML document
 	$html = <<HTML
@@ -64,9 +72,7 @@ HTML
 ;
 
 	# write to a temporary file
-	binmode $fp, ':utf8';
-	print $fp $html;
-	close $fp;
+	my $file = storeInTemp($html, ':utf8');
 
 	# add to the TOC
 	$chaptersCnt++;
@@ -167,11 +173,7 @@ if (exists $yaml->{cover}) {
 	say "Fetching a cover from <$yaml->{cover}>...\n";
 
 	my $cover = getUrl($yaml->{cover}) or die "Cannot fetch a cover";
-	my $file = tmpnam();
-
-	open my $fp, '>', $file or die "Cannot create temporary file for a cover";
-	print $fp $cover;
-	close $fp;
+	my $file = storeInTemp($cover);
 
 	my $cover_id = $epub->copy_image($file, 'cover.jpg');
 	$epub->add_meta_item('cover', $cover_id);
