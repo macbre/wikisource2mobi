@@ -3,3 +3,4 @@
 - [x] http://pl.wikisource.org/wiki/Szalony_p%C4%85tnik
 - [x] http://macfaq.koolhost.com/index1.html (Mark Twain - Listy z Ziemi)
 - [ ] http://pl.wikisource.org/wiki/Encyklopedia_staropolska/Ca%C5%82o%C5%9B%C4%87
+- [ ] http://www.shnaresys.com/roadside/picnic/parallel.htm (Piknik na skraju drogi - wersja rosyjska i angielska)
