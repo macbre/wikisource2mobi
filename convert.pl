@@ -13,7 +13,7 @@ use File::Temp 'tempfile';
 
 # HTTP utils
 use constant {
-	VERSION    => "0.0.2",
+	VERSION    => "0.1",
 	USER_AGENT => "Mozilla/5.0 (wikisource2mobi)"
 };
 
