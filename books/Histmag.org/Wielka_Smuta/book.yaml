@@ -1,0 +1,12 @@
+title: "Rosyjska Wielka Smuta"
+author: "Łukasz Franciszek Banaś"
+pubdate: 2013
+source: "http://histmag.org/Niech-zyje-Car-Wladyslaw-Zygmuntowicz-Cz.-1-Rachuby-polityczne-i-wybuch-wojny-8350"
+chapters:
+	- "http://histmag.org/Niech-zyje-Car-Wladyslaw-Zygmuntowicz-Cz.-1-Rachuby-polityczne-i-wybuch-wojny-8350"
+	- "http://histmag.org/Niech-zyje-car-Wladyslaw-Zygmuntowicz-Cz.-2-Hetman-Stanislaw-Zolkiewski-w-rokowaniach-z-Moskwa-8386"
+	- "http://histmag.org/Niech-zyje-car-Wladyslaw-Zygmuntowicz-Cz.-3-Upadek-planow-hetmana-8449"
+xpath:
+	header: "//div[@id='article']/h2"
+	content: "//div[@id='article']//*[(name()='p' and not(@class)) or name()='h3']"
+	remove: "//div[@id='article']//span[a/img]"
