@@ -209,16 +209,22 @@ foreach my $url (@chapters) {
 	$content .= "<p><br /><br /></p>\n";
 
 	# content
-	my @nodes = $tree->findnodes_as_strings($contentXPath) or die("No content nodes found");
+	my @nodes = $tree->findnodes($contentXPath) or die("No content nodes found");
 
-	foreach (@nodes) {
-		s/\[\d+\]//g; # remove references
-		next if /^\s?$/; # skip empty lines
+	foreach my $node (@nodes) {
+		my $isHeading = $node->tag() =~ /h\d/; # is h1, h2, ...?
+		my $text = $node->as_text;
 
-		s/^\s+|\s+$//g; # remove whitespaces
+		$text =~ s/\[\d+\]//g; # remove references
+		next if $text =~ /^\s?$/; # skip empty lines
 
-		$content .= "<p>$_</p>\n";
+		$text =~ s/^\s+|\s+$//g; # remove whitespaces
+		$text =~ s/&/&amp;/g; # encode HTML entities
+
+		$content .= $isHeading ? "<h3>$text</h3>" : "<p>$text</p>\n";
 	}
+
+	$tree->delete; # to avoid memory leaks
 
 	addChapter($epub, $chapterTitle, $content);
 }
