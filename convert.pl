@@ -2,6 +2,7 @@
 use common::sense;
 use LWP::UserAgent;
 use HTML::TreeBuilder::XPath;
+use HTML::TreeBuilder::LibXML;
 use YAML::Tiny;
 use Text::Iconv;
 use Data::Dumper;
@@ -13,7 +14,7 @@ use File::Temp 'tempfile';
 
 # HTTP utils
 use constant {
-	VERSION    => "0.1",
+	VERSION    => "0.1.1",
 	USER_AGENT => "Mozilla/5.0 (wikisource2mobi)"
 };
 
@@ -192,7 +193,7 @@ foreach my $url (@chapters) {
 	$html =~ s/<br \/>|&#160;/<\/p><p>/g;
 	$html =~ s/&nbsp;/ /g;
 
-	my $tree= HTML::TreeBuilder::XPath->new;
+	my $tree= HTML::TreeBuilder::LibXML->new;
 	$tree->parse($html) or die "Cannot parse chapter's HTML";
 
 	# xpath magic
@@ -213,6 +214,7 @@ foreach my $url (@chapters) {
 
 	foreach my $node (@nodes) {
 		my $isHeading = $node->tag() =~ /h\d/; # is h1, h2, ...?
+		my $isCode = $node->tag() =~ /pre|code|textarea/;
 		my $text = $node->as_text;
 
 		$text =~ s/\[\d+\]//g; # remove references
@@ -220,8 +222,18 @@ foreach my $url (@chapters) {
 
 		$text =~ s/^\s+|\s+$//g; # remove whitespaces
 		$text =~ s/&/&amp;/g; # encode HTML entities
+		$text =~ s/</&lt;/g; # encode HTML entities
+		$text =~ s/>/&gt;/g; # encode HTML entities
 
-		$content .= $isHeading ? "<h3>$text</h3>" : "<p>$text</p>\n";
+		if ($isCode) {
+			$content .= "<pre>$text</pre>";
+		}
+		elsif ($isHeading) {
+			$content .= "<h3>$text</h3>";
+		}
+		else {
+			$content .= "<p>$text</p>\n";
+		}
 	}
 
 	$tree->delete; # to avoid memory leaks
