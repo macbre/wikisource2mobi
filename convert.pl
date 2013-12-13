@@ -213,8 +213,7 @@ foreach my $url (@chapters) {
 	my @nodes = $tree->findnodes($contentXPath) or die("No content nodes found");
 
 	foreach my $node (@nodes) {
-		my $isHeading = $node->tag() =~ /h\d/; # is h1, h2, ...?
-		my $isCode = $node->tag() =~ /pre|code|textarea/;
+		my $tagName = $node->tag();
 		my $text = $node->as_text;
 
 		$text =~ s/\[\d+\]//g; # remove references
@@ -225,11 +224,14 @@ foreach my $url (@chapters) {
 		$text =~ s/</&lt;/g; # encode HTML entities
 		$text =~ s/>/&gt;/g; # encode HTML entities
 
-		if ($isCode) {
+		if ($tagName =~ /pre|code|textarea/) {
 			$content .= "<pre>$text</pre>";
 		}
-		elsif ($isHeading) {
+		elsif ($tagName =~ /h\d/) {
 			$content .= "<h3>$text</h3>";
+		}
+		elsif ($tagName eq 'li') {
+			$content .= "<li>$text</li>";
 		}
 		else {
 			$content .= "<p>$text</p>\n";
@@ -243,6 +245,8 @@ foreach my $url (@chapters) {
 
 # copyright stuff
 my $date = `date +%d\\ %B\\ %Y`;
+$date =  Encode::decode('utf8', $date);
+
 addChapter($epub, "Nota redakcyjna", <<COPYRIGHT
 <p><center><small>
 	<br /><br />
